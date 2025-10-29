@@ -70,13 +70,13 @@ while run:
         y = -2
 
     if key[pygame.K_w] and key[pygame.K_d]:
-        player.move_ip(x * 0.7071, y * 0.7071)
+        player.move_ip(x * 0.7, y * 0.7)
     elif key[pygame.K_d] and key[pygame.K_s]:
-        player.move_ip(x * 0.7071, -y * 0.7071)
+        player.move_ip(x * 0.7, -y * 0.7)
     elif key[pygame.K_s] and key[pygame.K_a]:
-        player.move_ip(-x * 0.7071, -y * 0.7071)
+        player.move_ip(-x * 0.7, -y * 0.7)
     elif key[pygame.K_a] and key[pygame.K_w]:
-        player.move_ip(-x * 0.7071, y * 0.7071)
+        player.move_ip(-x * 0.7, y * 0.7)
     elif key[pygame.K_a]:
         player.move_ip(-x, 0)
     elif key[pygame.K_d]:
