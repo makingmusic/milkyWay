@@ -397,8 +397,8 @@ while run:
             PLAYER_YAXIS_MOVEMENT_SPEED * PLAYER_SHIFT_KEY_MULTIPLIER
         )
     else:
-        x_axis_movement_speed = PLAYER_XAXIS_MOVEMENT_SPEED
-        y_axis_movement_speed = PLAYER_YAXIS_MOVEMENT_SPEED
+        x = 2
+        y = -2
 
     # movement logic
     diag_factor = PLAYER_DIAGONAL_MOVEMENT_FACTOR
@@ -429,18 +429,7 @@ while run:
 
     # the player may have gone off the screen. bring it back in.
     player.clamp_ip(screen.get_rect())
-    pygame.draw.rect(screen, PLAYER_COLOR, player)
-
-    # detect collision with the maze.
-    if detectCollision(player, maze):
-        # make the player blink for a short duration.
-        pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
-        pygame.display.flip()
-        time.sleep(0.1)
-        pygame.draw.rect(screen, PLAYER_COLOR, player)
-        pygame.display.flip()
-        (x_delta, y_delta) = resolveCollision(player, maze)
-        player.move_ip(x_delta, y_delta)
+    pygame.draw.rect(screen, (0, 30, 255), player)
 
     # draw the echoes. concentric cirles in increasing and descreasing brightness.
     for echo in echoes[::-1]:
