@@ -31,6 +31,7 @@ PLAYER_SIZE = 15 # 15x15 pixels
 PLAYER_START_X = 5
 PLAYER_START_Y = 5
 PLAYER_COLOR = (255, 0, 0) # Red
+PLAYER_BLINK_COLOR = (255, 255, 255) # White
 PLAYER_XAXIS_MOVEMENT_SPEED = 2
 PLAYER_YAXIS_MOVEMENT_SPEED = 2
 PLAYER_SHIFT_KEY_MULTIPLIER = 2 # when shift key is pressed, the movement speed is multiplied by this value.
@@ -357,7 +358,12 @@ while run:
 
     # detect collision with the maze. 
     if detectCollision(player, maze):
-        print("player has collided with a wall at ", player.centerx, player.centery)
+        # make the player blink for a short duration.
+        pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
+        pygame.display.flip()
+        time.sleep(0.1)
+        pygame.draw.rect(screen, PLAYER_COLOR, player)
+        pygame.display.flip()
         (x_delta, y_delta) = resolveCollision(player, maze) 
         player.move_ip(x_delta, y_delta)
 
