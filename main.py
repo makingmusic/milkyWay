@@ -16,13 +16,14 @@ MAZE_PATH_COLOR = (0, 0, 0)  # Black
 MAZE_ENTRANCE_COLOR = (0, 0, 0)  # Black
 MAZE_EXIT_COLOR = (0, 255, 0)  # Green
 
-ECHO_RADIUS_MAX = 25
+ECHO_RADIUS_MAX = 25  # TODO: this is not being used. delete it later.
 ECHO_RADIUS_MIN = 0
 ECHO_RADIUS_START = 0
 ECHO_RADIUS_INCREMENT = 6  # how much the radius increases by each frame.
 ECHO_THICKNESS = 2  # width of the echo circle
 ECHO_COLOR = (255, 255, 255)  # White
 
+# TODO: ALpha is not showing the transparent effect. While it is useful to decay the echo circle. Fix it.
 ECHO_ALPHA_MAX = 255
 ECHO_ALPHA_MIN = 0
 ECHO_ALPHA_START = 255
@@ -102,9 +103,8 @@ def genMaze(width, height, complexity=MAZE_COMPLEXITY):
     maze[height - 1][width - 1] = 0  # set the end position to a path
 
     # Verify the exit is reachable from the start
-    # risky. it might become an infinite loop. come back to this later to fix it.
-    # i can count the number of times the function is called and if it exceeds a certain number, return an error.
-    # TODO: for later.
+    # TODO: This approach is risky. it might become an infinite loop. come back to this later to fix it.
+    # i can insteadcount the number of times the function is called and if it exceeds a certain number, return an error.
     if not is_reachable(maze, (0, 0), (width - 1, height - 1)):
         return genMaze(
             width, height, complexity
@@ -428,10 +428,12 @@ while run:
         player.move_ip(0, y_axis_movement_speed)
 
     # the player may have gone off the screen. bring it back in.
+    # TODO: Check to see if this is even needed now that there are wall collision checks implemented.
     player.clamp_ip(screen.get_rect())
     pygame.draw.rect(screen, (0, 30, 255), player)
 
     # draw the echoes. concentric cirles in increasing and descreasing brightness.
+    # TODO: the echoe alpha is not changing the transparency of the echo circle. Fix it.
     for echo in echoes[::-1]:
         ex, ey, r, a = echo
         r += ECHO_RADIUS_INCREMENT
@@ -443,7 +445,14 @@ while run:
         s = pygame.Surface(
             (screenWidth, screenHeight), pygame.SRCALPHA
         )  # make a new clean surface on which to draw the echo.
-        pygame.draw.circle(s, ECHO_COLOR, (ex, ey), r, ECHO_THICKNESS)
+        # draw with per-pixel alpha so transparency reflects current echo alpha
+        alpha = 255 if a > 255 else (0 if a < 0 else int(a))
+        color_with_alpha = (ECHO_COLOR[0], ECHO_COLOR[1], ECHO_COLOR[2], alpha)
+        center_of_circle = (int(ex), int(ey))
+        radius_of_circle = int(r)
+        pygame.draw.circle(
+            s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS
+        )
         screen.blit(s, (0, 0))
 
     # check if the player has reached the exit.
@@ -463,11 +472,8 @@ while run:
 
 # measure the time taken from the start of the main loop to the end of the main loop.
 maze_solve_end_time = time.time()
-print(
-    "time taken to solve: ",
-    round((maze_solve_end_time - maze_solve_start_time), 2),
-    "seconds",
-)
+time_taken_to_solve_maze = round(maze_solve_end_time - maze_solve_start_time, 2)
+print("time taken to solve: ", time_taken_to_solve_maze, "seconds")
 
 # TODO: do an animation of the player reaching the exit.
 
