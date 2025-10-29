@@ -9,7 +9,7 @@ screenHeight = 600
 
 screen = pygame.display.set_mode((screenWidth, screenHeight))
 
-echoes
+echoes = []
 
 
 # Player sprite shape stuff(Widt, Height, x pos, y pos)
