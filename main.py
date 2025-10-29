@@ -2,11 +2,14 @@ import pygame
 import time
 
 pygame.init()
+clock = pygame.time.Clock()
 
 screenWidth = 800
 screenHeight = 600
 
 screen = pygame.display.set_mode((screenWidth, screenHeight))
+
+echoes
 
 
 # Player sprite shape stuff(Widt, Height, x pos, y pos)
