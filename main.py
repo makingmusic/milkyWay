@@ -1,45 +1,25 @@
 import pygame, sys, random, time
 from collections import deque
 
-
 ########################################################
-# Config: All config lives here.
+# Config: All config lives here. Self explanatory names.
 ########################################################
-CELL_SIZE = 20
-MAZE_W, MAZE_H = 31, 21
-PLAYER_SIZE = 15 # 15x15 pixels
-PLAYER_START_X = 5
-PLAYER_START_Y = 5
-PLAYER_COLOR = (255, 0, 0) # Red
-
-WALL_COLOR = (0, 0, 80) # Dark gray
-PATH_COLOR = (0, 0, 0) # Black
-ENTRANCE_COLOR = (0, 0, 0) # Black
-EXIT_COLOR = (0, 255, 0) # Green
-
 GAME_FRAME_RATE = 60
 
-PLAYER_XAXIS_MOVEMENT_SPEED = 2
-PLAYER_YAXIS_MOVEMENT_SPEED = 2
-PLAYER_SHIFT_KEY_MULTIPLIER = 2 # when shift key is pressed, the movement speed is multiplied by this value.
+MAZE_TITLE = "One Maze to Rule Them All"
 
-#PLAYER_RIGHT_KEY = pygame.K_d
-#PLAYER_LEFT_KEY = pygame.K_a
-#PLAYER_UP_KEY = pygame.K_w
-#PLAYER_DOWN_KEY = pygame.K_s 
-
-PLAYER_RIGHT_KEY = pygame.K_RIGHT
-PLAYER_LEFT_KEY = pygame.K_LEFT
-PLAYER_UP_KEY = pygame.K_UP
-PLAYER_DOWN_KEY = pygame.K_DOWN
-PLAYER_ECHO_KEY = pygame.K_SPACE # Press space to trigger an echo.
-PLAYER_SHIFT_KEY = pygame.K_LSHIFT
+CELL_SIZE = 20
+MAZE_W, MAZE_H = 31, 21
+MAZE_WALL_COLOR = (0, 0, 80) # Dark gray
+MAZE_PATH_COLOR = (0, 0, 0) # Black
+MAZE_ENTRANCE_COLOR = (0, 0, 0) # Black
+MAZE_EXIT_COLOR = (0, 255, 0) # Green
 
 ECHO_RADIUS_MAX = 25
 ECHO_RADIUS_MIN = 0
 ECHO_RADIUS_START = 0
 ECHO_RADIUS_INCREMENT = 6 # how much the radius increases by each frame.
-ECHO_THICKNESS = 2
+ECHO_THICKNESS = 2 # width of the echo circle
 ECHO_COLOR = (255, 255, 255) # White
 
 ECHO_ALPHA_MAX = 255
@@ -47,7 +27,26 @@ ECHO_ALPHA_MIN = 0
 ECHO_ALPHA_START = 255 
 ECHO_ALPHA_DECREMENT = 4 # how much the alpha decreases by each frame. 
 
-MAZE_TITLE = "One Maze to Rule Them All"
+PLAYER_SIZE = 15 # 15x15 pixels
+PLAYER_START_X = 5
+PLAYER_START_Y = 5
+PLAYER_COLOR = (255, 0, 0) # Red
+PLAYER_XAXIS_MOVEMENT_SPEED = 2
+PLAYER_YAXIS_MOVEMENT_SPEED = 2
+PLAYER_SHIFT_KEY_MULTIPLIER = 2 # when shift key is pressed, the movement speed is multiplied by this value.
+PLAYER_DIAGONAL_MOVEMENT_FACTOR = 0.7071 # factor for diagonal movement. 
+
+#PLAYER_RIGHT_KEY = pygame.K_d
+#PLAYER_LEFT_KEY = pygame.K_a
+#PLAYER_UP_KEY = pygame.K_w
+#PLAYER_DOWN_KEY = pygame.K_s 
+PLAYER_RIGHT_KEY = pygame.K_RIGHT
+PLAYER_LEFT_KEY = pygame.K_LEFT
+PLAYER_UP_KEY = pygame.K_UP
+PLAYER_DOWN_KEY = pygame.K_DOWN
+
+PLAYER_ECHO_KEY = pygame.K_SPACE # Press space to trigger an echo.
+PLAYER_SHIFT_KEY = pygame.K_LSHIFT
 
 ########################################################
 # Maze Util Functions 
@@ -152,6 +151,124 @@ def is_reachable(maze, start, end):
     
     return False
 
+def detectCollision(player, maze):
+    """
+    Detect if the player has collided with a wall in the maze.
+    """
+    # normalize the player to maze grid.
+    player_left = player.x // CELL_SIZE
+    player_right = (player.x + player.width - 1) // CELL_SIZE
+    player_top = player.y // CELL_SIZE
+    player_bottom = (player.y + player.height - 1) // CELL_SIZE
+    
+    # Check if any part of the player is in a wall
+    for y in range(player_top, player_bottom + 1): 
+        for x in range(player_left, player_right + 1):
+            if 0 <= y < len(maze) and 0 <= x < len(maze[0]): # Check bounds
+                if maze[y][x] == 1:  # 1 represents a wall
+                    return True
+    return False
+
+def resolveCollision(player, maze):
+    """
+    Return minimal (dx, dy) displacement vector to resolve overlaps with wall tiles.
+    If no overlap, returns (0, 0).
+    """
+    player_left_cell = player.left // CELL_SIZE
+    player_right_cell = (player.right - 1) // CELL_SIZE
+    player_top_cell = player.top // CELL_SIZE
+    player_bottom_cell = (player.bottom - 1) // CELL_SIZE
+
+    height = len(maze)
+    width = len(maze[0]) if height > 0 else 0
+
+    min_left_clear = float('inf')
+    max_right_clear = float('-inf')
+    min_top_clear = float('inf')
+    max_bottom_clear = float('-inf')
+
+    def intervals_overlap(a_start, a_end, b_start, b_end):
+        return not (a_end <= b_start or b_end <= a_start)
+
+    any_collision = False
+
+    for ty in range(player_top_cell, player_bottom_cell + 1):
+        for tx in range(player_left_cell, player_right_cell + 1):
+            if not (0 <= ty < height and 0 <= tx < width):
+                continue
+            if maze[ty][tx] != 1:
+                continue
+
+            wall_left = tx * CELL_SIZE
+            wall_top = ty * CELL_SIZE
+            wall_right = wall_left + CELL_SIZE
+            wall_bottom = wall_top + CELL_SIZE
+
+            if not intervals_overlap(player.left, player.right, wall_left, wall_right):
+                continue
+            if not intervals_overlap(player.top, player.bottom, wall_top, wall_bottom):
+                continue
+
+            any_collision = True
+
+            left_clear = wall_left - player.right
+            right_clear = wall_right - player.left
+            if left_clear < min_left_clear:
+                min_left_clear = left_clear
+            if right_clear > max_right_clear:
+                max_right_clear = right_clear
+
+            top_clear = wall_top - player.bottom
+            bottom_clear = wall_bottom - player.top
+            if top_clear < min_top_clear:
+                min_top_clear = top_clear
+            if bottom_clear > max_bottom_clear:
+                max_bottom_clear = bottom_clear
+
+    if not any_collision:
+        return (0, 0)
+
+    # Compute minimal axis-aligned resolution on each axis independently
+    if min_left_clear < 0 < max_right_clear:
+        dx_candidate = min_left_clear if abs(min_left_clear) <= abs(max_right_clear) else max_right_clear
+    else:
+        dx_candidate = 0
+
+    if min_top_clear < 0 < max_bottom_clear:
+        dy_candidate = min_top_clear if abs(min_top_clear) <= abs(max_bottom_clear) else max_bottom_clear
+    else:
+        dy_candidate = 0
+
+    # Prefer the smallest movement overall and avoid diagonal hops:
+    # move only along the axis with the smaller absolute correction.
+    if dx_candidate == 0 and dy_candidate == 0:
+        # Fallback: pick the smallest absolute among available finite endpoints
+        candidates = []
+        if min_left_clear != float('inf'):
+            candidates.append(min_left_clear)
+        if max_right_clear != float('-inf'):
+            candidates.append(max_right_clear)
+        if min_top_clear != float('inf'):
+            candidates.append(min_top_clear)
+        if max_bottom_clear != float('-inf'):
+            candidates.append(max_bottom_clear)
+        if not candidates:
+            return (0, 0)
+        best = min(candidates, key=lambda v: abs(v))
+        if best in (min_left_clear, max_right_clear):
+            return (int(best), 0)
+        else:
+            return (0, int(best))
+
+    if dx_candidate == 0:
+        return (0, int(dy_candidate))
+    if dy_candidate == 0:
+        return (int(dx_candidate), 0)
+
+    if abs(dx_candidate) <= abs(dy_candidate):
+        return (int(dx_candidate), 0)
+    else:
+        return (0, int(dy_candidate))
 
 ########################################################
 # Init 
@@ -174,10 +291,10 @@ screen = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption(MAZE_TITLE)
 
 # color setup
-wallColor = WALL_COLOR
-pathColor = PATH_COLOR
-entranceColor = ENTRANCE_COLOR
-exitColor = EXIT_COLOR
+wallColor = MAZE_WALL_COLOR
+pathColor = MAZE_PATH_COLOR
+entranceColor = MAZE_ENTRANCE_COLOR
+exitColor = MAZE_EXIT_COLOR
 
 ########################################################
 # Main Loop
@@ -216,7 +333,7 @@ while run:
         y_axis_movement_speed = PLAYER_YAXIS_MOVEMENT_SPEED
 
     # movement logic 
-    diag_factor = 0.7071
+    diag_factor = PLAYER_DIAGONAL_MOVEMENT_FACTOR
     if key[PLAYER_UP_KEY] and key[PLAYER_RIGHT_KEY]: # top right
         player.move_ip(x_axis_movement_speed * diag_factor, -y_axis_movement_speed * diag_factor)
     elif key[PLAYER_RIGHT_KEY] and key[PLAYER_DOWN_KEY]: # bottom right
@@ -237,6 +354,12 @@ while run:
     # the player may have gone off the screen. bring it back in. 
     player.clamp_ip(screen.get_rect()) 
     pygame.draw.rect(screen, PLAYER_COLOR, player) 
+
+    # detect collision with the maze. 
+    if detectCollision(player, maze):
+        print("player has collided with a wall at ", player.centerx, player.centery)
+        (x_delta, y_delta) = resolveCollision(player, maze) 
+        player.move_ip(x_delta, y_delta)
 
     # draw the echoes. concentric cirles in increasing and descreasing brightness. 
     for echo in echoes[::-1]:
