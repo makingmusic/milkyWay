@@ -87,7 +87,7 @@ while run:
         player.move_ip(0, -y)
 
     player.clamp_ip(screen.get_rect())
-    pygame.draw.rect(screen, (255, 0, 0), player)
+    pygame.draw.rect(screen, (0, 30, 255), player)
 
     for echo in echoes[:]:
         ex, ey, r, a = echo
