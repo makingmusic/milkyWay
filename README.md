@@ -1,4 +1,11 @@
-# Name TBD ###
+# EchoMaze
 
-## A basic game with the mechanics of a bot and when you pulse it can see around it using "echolocation" as it is blind.
+## A basic maze game.
+Keyboard arrow keys for navigation
+Spacebar or left-mouse click for echo
+
+TODO: 
+* hiding the walls and using echolocation to find the walls is tbd. 
+
+
 
