@@ -1,4 +1,7 @@
-import pygame, sys, random, time
+import sys
+import time
+import pygame
+import random
 from collections import deque
 
 ########################################################
