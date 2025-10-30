@@ -375,6 +375,9 @@ EXIT_RECT = pygame.Rect(
     (mazeX - 1) * CELL_SIZE, (mazeY - 1) * CELL_SIZE, CELL_SIZE, CELL_SIZE
 ) # useful for collision detection. 
 
+s = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA) # one-time surface for the echo circles. 
+
+
 
 def drawMaze(screen, maze, entranceColor, exitColor):
     """
@@ -447,6 +450,7 @@ def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
 # Main Loop
 ########################################################
 run = True
+
 maze_solve_start_time = time.time()
 
 
@@ -550,7 +554,7 @@ while run:
     # draw everything here: maze, echoes, player.
     
     # prepare echo surface; we'll blit it AFTER drawing the maze so echoes are visible
-    s = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
+    s.fill((0, 0, 0, 0)) # clear the surface.
     for center_of_circle, radius_of_circle, color_with_alpha in circles_to_draw:
         pygame.draw.circle(s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS)
 
