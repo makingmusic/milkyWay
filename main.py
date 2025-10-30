@@ -446,8 +446,8 @@ while run:
             (screenWidth, screenHeight), pygame.SRCALPHA
         )  # make a new clean surface on which to draw the echo.
         # draw with per-pixel alpha so transparency reflects current echo alpha
-        alpha = 255 if a > 255 else (0 if a < 0 else int(a))
-        color_with_alpha = (ECHO_COLOR[0], ECHO_COLOR[1], ECHO_COLOR[2], alpha)
+        alpha_int = max(ECHO_ALPHA_MIN, min(ECHO_ALPHA_MAX, int(a)))
+        color_with_alpha = (ECHO_COLOR[0], ECHO_COLOR[1], ECHO_COLOR[2], alpha_int)
         center_of_circle = (int(ex), int(ey))
         radius_of_circle = int(r)
         pygame.draw.circle(
