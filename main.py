@@ -15,7 +15,8 @@ MAZE_TITLE = "One Maze to Rule Them All"
 MAZE_COMPLEXITY = 0.01  # 0.0 -> very simple (straighter, longer corridors), 1.0 -> very complex (more turns/branching feel)
  
 CELL_SIZE = 20
-MAZE_W, MAZE_H = 31, 21
+MAZE_W, MAZE_H = 50, 21
+MAX_NUM_TIMES_TO_REGENERATE_MAZE = 10 # if the maze is not reachable, regenerate it up to 10 times.
 MAZE_HIDDEN_WALL_COLOR = (0,0,0) # black 
 if DEBUG_MODE:
     MAZE_HIDDEN_WALL_COLOR = (128, 128, 128)  # grey color for debugging purposes.
@@ -69,6 +70,7 @@ PLAYER_SHIFT_KEY = pygame.K_LSHIFT
 # Maze Util Functions
 ########################################################
 
+maze_generation_attempts = 0 # count the number of times the maze has been generated. 
 
 def genMaze(width, height, complexity=MAZE_COMPLEXITY):
     """
@@ -85,6 +87,12 @@ def genMaze(width, height, complexity=MAZE_COMPLEXITY):
     Returns:
         list: 2D list of integers where 0 = path, 1 = wall
     """
+    global maze_generation_attempts # increment the number of times the maze has been generated. 
+    maze_generation_attempts += 1
+    if maze_generation_attempts > MAX_NUM_TIMES_TO_REGENERATE_MAZE:
+        print("error: failed to generate maze after 10 attempts. giving up.")
+        return None
+
     maze = [[1 for _ in range(width)] for _ in range(height)]
     directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
@@ -357,6 +365,9 @@ cellSize = CELL_SIZE
 mazeX, mazeY = MAZE_W, MAZE_H
 start_time = time.time()
 maze = genMaze(mazeX, mazeY)
+if (maze is None):
+    print("error: failed to generate maze after ", MAX_NUM_TIMES_TO_REGENERATE_MAZE, " attempts. giving up.")
+    sys.exit(1)
 end_time = time.time()
 time_taken_to_generate_maze = round((end_time - start_time) * 1000000, 2)
 print("successfully generated maze in ", time_taken_to_generate_maze, "microseconds")
