@@ -4,6 +4,8 @@ from collections import deque
 ########################################################
 # Config: All config lives here. Self explanatory names.
 ########################################################
+
+DEBUG_MODE = False
 GAME_FRAME_RATE = 60
 
 MAZE_TITLE = "One Maze to Rule Them All"
@@ -198,7 +200,11 @@ def detectCollision(player, maze):
     for y in range(player_top, player_bottom + 1):
         for x in range(player_left, player_right + 1):
             if 0 <= y < len(maze) and 0 <= x < len(maze[0]):  # Check bounds
+                if DEBUG_MODE:
+                    print(f"Checking if player collided with wall at ({x}, {y})")
                 if maze[y][x] == 1:  # 1 represents a wall
+                    if DEBUG_MODE:
+                        print(f"Player collided with wall at ({x}, {y})")
                     return True
     return False
 
@@ -397,8 +403,8 @@ while run:
             PLAYER_YAXIS_MOVEMENT_SPEED * PLAYER_SHIFT_KEY_MULTIPLIER
         )
     else:
-        x = 2
-        y = -2
+        x_axis_movement_speed = PLAYER_XAXIS_MOVEMENT_SPEED
+        y_axis_movement_speed = PLAYER_YAXIS_MOVEMENT_SPEED
 
     # movement logic
     diag_factor = PLAYER_DIAGONAL_MOVEMENT_FACTOR
@@ -431,6 +437,16 @@ while run:
     # TODO: Check to see if this is even needed now that there are wall collision checks implemented.
     player.clamp_ip(screen.get_rect())
     pygame.draw.rect(screen, (0, 30, 255), player)
+
+    if detectCollision(player, maze):  # player has collided with a wall.
+        # make the player blink for a short duration.
+        pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
+        pygame.display.flip()
+        time.sleep(0.1)
+        pygame.draw.rect(screen, PLAYER_COLOR, player)
+        pygame.display.flip()
+        (x_delta, y_delta) = resolveCollision(player, maze)
+        player.move_ip(x_delta, y_delta)
 
     # draw the echoes. concentric cirles in increasing and descreasing brightness.
     # TODO: the echoe alpha is not changing the transparency of the echo circle. Fix it.
