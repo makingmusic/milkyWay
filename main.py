@@ -8,20 +8,25 @@ from collections import deque
 # Config: All config lives here. Self explanatory names.
 ########################################################
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 GAME_FRAME_RATE = 60
 
 MAZE_TITLE = "One Maze to Rule Them All"
 MAZE_COMPLEXITY = 0.01  # 0.0 -> very simple (straighter, longer corridors), 1.0 -> very complex (more turns/branching feel)
-
+ 
 CELL_SIZE = 20
 MAZE_W, MAZE_H = 31, 21
-MAZE_WALL_COLOR = (173, 216, 230)  # Light blue
+MAZE_HIDDEN_WALL_COLOR = (0,0,0) # black 
+if DEBUG_MODE:
+    MAZE_HIDDEN_WALL_COLOR = (128, 128, 128)  # grey color for debugging purposes.
+MAZE_SHOWN_WALL_COLOR = (173, 216, 230)  # Light blue 
 MAZE_PATH_COLOR = (0, 0, 0)  # Black
 MAZE_ENTRANCE_COLOR = (0, 0, 0)  # Black
 MAZE_EXIT_COLOR = (0, 255, 0)  # Green
-# MAZE_DEBUG_COLOR = (128, 128, 128)  # grey color for debugging purposes.
-MAZE_DEBUG_COLOR = (0, 0, 0)  # black
+
+MAZE_CODE_PATH = 0 
+MAZE_CODE_HIDDEN_WALL = 1
+MAZE_CODE_SHOWN_WALL = 2
 
 ECHO_RADIUS_MAX = 25  # TODO: this is not being used. delete it later.
 ECHO_RADIUS_MIN = 0
@@ -41,6 +46,7 @@ PLAYER_START_X = 5
 PLAYER_START_Y = 5
 PLAYER_COLOR = (255, 0, 0)  # Red
 PLAYER_BLINK_COLOR = (255, 255, 255)  # White
+PLAYER_COLLISSION_FLASH_FRAMES = 4 # how many frames to show the collision flash. 
 PLAYER_EXIT_COLOR = (0, 255, 0)  # Green
 PLAYER_XAXIS_MOVEMENT_SPEED = 2
 PLAYER_YAXIS_MOVEMENT_SPEED = 2
@@ -320,19 +326,22 @@ def resolveCollision(player, maze):
         return (0, int(dy_candidate))
 
 
-def hasPlayerReachedExit(player, maze):
+def hasPlayerReachedExit(player):
     """
-    Check if the player has reached the exit in the maze.
+    Check if the player has reached fully inside the exit rectangle.
     """
-    # find the rect for the player
-    player_rect = pygame.Rect(player.x, player.y, player.width, player.height)
-    # find the rect for the exit
-    exit_rect = pygame.Rect(
-        (mazeX - 1) * CELL_SIZE, (mazeY - 1) * CELL_SIZE, CELL_SIZE, CELL_SIZE
-    )
-    # check if the player's rect overlaps with the exit's rect
-    has_reached = player_rect.colliderect(exit_rect)
-    return has_reached
+    # check if player's center cell is equal to the center of the exit rectangle.
+    player_center_x = player.centerx // CELL_SIZE
+    player_center_y = player.centery // CELL_SIZE
+
+    if (player_center_x == (MAZE_W - 1)) and (player_center_y == (MAZE_H - 1)):
+        # check if player's center is fully inside the exit rectangle.
+        if ((player.centerx >= EXIT_RECT.left) and (player.centerx <= EXIT_RECT.right)) and ((player.centery >= EXIT_RECT.top) and (player.centery <= EXIT_RECT.bottom)):
+            return True
+        else:
+            return False   
+    
+    return False
 
 
 ########################################################
@@ -342,6 +351,7 @@ player = pygame.Rect(PLAYER_START_X, PLAYER_START_Y, PLAYER_SIZE, PLAYER_SIZE)
 echoes = []
 pygame.init()
 clock = pygame.time.Clock()
+player_collision_flash_frames = 0  # frames remaining to show a wall-hit flash outline 
 
 cellSize = CELL_SIZE
 mazeX, mazeY = MAZE_W, MAZE_H
@@ -357,58 +367,46 @@ screen = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption(MAZE_TITLE)
 
 # color setup
-# wallColor = MAZE_WALL_COLOR
-wallColor = MAZE_DEBUG_COLOR  # for debug only.
 pathColor = MAZE_PATH_COLOR
 entranceColor = MAZE_ENTRANCE_COLOR
 exitColor = MAZE_EXIT_COLOR
 
-########################################################
-# Main Loop
-########################################################
-run = True
-maze_solve_start_time = time.time()
+EXIT_RECT = pygame.Rect(
+    (mazeX - 1) * CELL_SIZE, (mazeY - 1) * CELL_SIZE, CELL_SIZE, CELL_SIZE
+) # useful for collision detection. 
 
 
-def drawMaze(screen, maze, wallColor, pathColor, entranceColor, exitColor):
+def drawMaze(screen, maze, entranceColor, exitColor):
     """
     Draw the maze on the screen.
     Args:
         screen: pygame.Surface - the screen to draw the maze on
         maze: list of lists - the maze to draw
-        wallColor: tuple - the color of the walls
-        pathColor: tuple - the color of the paths
         entranceColor: tuple - the color of the entrance
         exitColor: tuple - the color of the exit
     """
+    rects_with_colors = []
     for y in range(mazeY):
         for x in range(mazeX):
             rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
             if y == mazeY - 1 and x == mazeX - 1:
-                pygame.draw.rect(screen, exitColor, rect)
-            elif maze[y][x] == 1:
-                pygame.draw.rect(screen, wallColor, rect)
+                color = exitColor
             else:
-                pygame.draw.rect(screen, pathColor, rect)
-    return
+                cell_value = maze[y][x]
+                if cell_value == MAZE_CODE_PATH:
+                    color = MAZE_PATH_COLOR
+                elif cell_value == MAZE_CODE_HIDDEN_WALL:
+                    color = MAZE_HIDDEN_WALL_COLOR
+                elif cell_value == MAZE_CODE_SHOWN_WALL:
+                    color = MAZE_SHOWN_WALL_COLOR
+                else:
+                    # this should never happen. 
+                    print(f"error:unexpected cell value: {cell_value} at ({x}, {y})")
+                    color = MAZE_PATH_COLOR
+            rects_with_colors.append((rect, color))
+    return rects_with_colors
 
-
-def drawSubsetMaze(screen, maze_subset, wallColor, pathColor, entranceColor, exitColor):
-    """
-    Draw the subset of the maze on the screen.
-    Remember that all the maze data here might not be a full 2D list.
-    """
-    for y in range(mazeY):
-        for x in range(mazeX):
-            rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
-            if maze_subset[y][x] == 1:
-                pygame.draw.rect(screen, wallColor, rect)
-            else:
-                pygame.draw.rect(screen, pathColor, rect)
-    return
-
-
-def getMazeSubset(maze, center_of_circle, radius_of_circle):
+def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
     """
     Get the subset of the maze that is within the echo circle.
 
@@ -418,12 +416,14 @@ def getMazeSubset(maze, center_of_circle, radius_of_circle):
         radius_of_circle: int radius in pixels
 
     Returns:
-        maze_subset: 2D list where cells within the circle contain the original maze data,
-                    and cells outside the circle are set to 0 (path)
+        maze_subset: 2D list where
+            - original paths (0) always remain MAZE_CODE_PATH 
+            - walls (1) within the circle become MAZE_CODE_SHOWN_WALL 
+            - cells outside the circle retain their original maze value (MAZE_CODE_PATH or MAZE_CODE_HIDDEN_WALL)
     """
     cell_count = 0
-    # initialize maze_subset as a 2D list where all the values are 0.
-    maze_subset = [[0 for _ in range(mazeX)] for _ in range(mazeY)]
+    # Start by inheriting all original maze values (retain outside-circle values for both walls and paths)
+    maze_subset = [row[:] for row in maze]
 
     for y in range(mazeY):
         for x in range(mazeX):
@@ -432,20 +432,31 @@ def getMazeSubset(maze, center_of_circle, radius_of_circle):
             cell_center_y = y * CELL_SIZE + CELL_SIZE // 2
 
             # Check if the cell center is within the circle
+            # formula is (x - center_x) ** 2 + (y - center_y) ** 2 <= radius ** 2 
             if (cell_center_x - center_of_circle[0]) ** 2 + (
                 cell_center_y - center_of_circle[1]
             ) ** 2 <= radius_of_circle**2:
                 cell_count += 1
-                # Preserve the original maze data instead of just setting to 1
-                maze_subset[y][x] = maze[y][x]
-
-    if DEBUG_MODE:
-        print(f"sub maze cells: {cell_count} out of {mazeX * mazeY} cells")
+                # If this cell is a hidden wall in the original maze, mark it as shown wall.
+                # Paths (MAZE_CODE_PATH) remain MAZE_CODE_PATH by inheritance
+                if maze[y][x] == MAZE_CODE_HIDDEN_WALL:
+                    maze_subset[y][x] = MAZE_CODE_SHOWN_WALL # mark as shown wall.
     return maze_subset
 
+########################################################
+# Main Loop
+########################################################
+run = True
+maze_solve_start_time = time.time()
+
+
+solvedtheMaze = False # flag to indicate if the maze has been solved. 
 
 while run:
-    for event in pygame.event.get():
+    # clear the screen
+    screen.fill((0, 0, 0))  
+
+    for event in pygame.event.get(): # handle key presses and mouse clicks.
         if event.type == pygame.QUIT:
             run = False
         if (event.type == pygame.MOUSEBUTTONDOWN) or (
@@ -454,13 +465,6 @@ while run:
             echoes.append(
                 [player.centerx, player.centery, ECHO_RADIUS_START, ECHO_ALPHA_START]
             )  # schedule the echo to be drawn.
-
-    screen.fill((0, 0, 0))  # clear the screen
-
-    # draw the maze.
-    drawMaze(screen, maze, MAZE_DEBUG_COLOR, pathColor, entranceColor, exitColor)
-    # refresh the screen.
-    # pygame.display.flip()
 
     # find out if any key is pressed by the player.
     key = pygame.key.get_pressed()  # returns immediately.
@@ -504,22 +508,30 @@ while run:
     elif key[PLAYER_DOWN_KEY]:  # down
         player.move_ip(0, y_axis_movement_speed)
 
-    # the player may have gone off the screen. bring it back in.
-    # TODO: Check to see if this is even needed now that there are wall collision checks implemented.
-    player.clamp_ip(screen.get_rect())
-    pygame.draw.rect(screen, (0, 30, 255), player)
 
     if detectCollision(player, maze):  # player has collided with a wall.
-        # make the player blink for a short duration.
-        pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
-        pygame.display.flip()
-        pygame.draw.rect(screen, PLAYER_COLOR, player)
-        pygame.display.flip()
+        # schedule a brief non-blocking flash; rendering happens in the draw step
+        player_collision_flash_frames = PLAYER_COLLISSION_FLASH_FRAMES
         (x_delta, y_delta) = resolveCollision(player, maze)
         player.move_ip(x_delta, y_delta)
 
     # draw the echoes. concentric cirles in increasing and descreasing brightness.
-    # TODO: the echoe alpha is not changing the transparency of the echo circle. Fix it.
+    # TODO: the echo alpha is not changing the transparency of the echo circle. Fix it.
+
+    # find the largest echo radius.
+    largest_echo_radius = max(echo[2] for echo in echoes) if echoes else 0 # default to 0 if no echoes. 
+
+    # now for this largest echo radius, identify the maze subset.
+    maze_subset = getMazeWithinEchoCircle(maze, player.center, largest_echo_radius)  
+    if DEBUG_MODE:
+        if largest_echo_radius > 0:
+            print(f"largest echo radius: {largest_echo_radius}")
+            # count number of cells in maze subset that are not zero.
+            maze_subset_cells = sum(1 for row in maze_subset for cell in row if cell != 0) if maze_subset else 0    
+            print(f"non zero maze subset cells: {maze_subset_cells}")
+
+    # calculate the echo circles 
+    circles_to_draw = []
     for echo in echoes[::-1]:
         ex, ey, r, a = echo
         r += ECHO_RADIUS_INCREMENT
@@ -528,36 +540,44 @@ while run:
         if a <= 0:
             echoes.remove(echo)
             continue
-        s = pygame.Surface(
-            (screenWidth, screenHeight), pygame.SRCALPHA
-        )  # make a new clean surface on which to draw the echo.
         # draw with per-pixel alpha so transparency reflects current echo alpha
         alpha_int = max(ECHO_ALPHA_MIN, min(ECHO_ALPHA_MAX, int(a)))
         color_with_alpha = (ECHO_COLOR[0], ECHO_COLOR[1], ECHO_COLOR[2], alpha_int)
         center_of_circle = (int(ex), int(ey))
         radius_of_circle = int(r)
-        pygame.draw.circle(
-            s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS
-        )
-        # find the subset of the maze that is within the echo circle.
-        maze_subset = getMazeSubset(maze, center_of_circle, radius_of_circle)
-        # draw the maze subset on the screen.
-        drawMaze(
-            screen, maze_subset, MAZE_WALL_COLOR, pathColor, entranceColor, exitColor
-        )
-        screen.blit(s, (0, 0))
+        circles_to_draw.append((center_of_circle, radius_of_circle, color_with_alpha)) # add to the list of circles to draw.
+
+    # draw everything here: maze, echoes, player.
+    
+    # prepare echo surface; we'll blit it AFTER drawing the maze so echoes are visible
+    s = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
+    for center_of_circle, radius_of_circle, color_with_alpha in circles_to_draw:
+        pygame.draw.circle(s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS)
+
+    # 1. the updated maze (based on the echoes)
+    rects_to_draw = drawMaze(screen, maze_subset, entranceColor, exitColor) # returns a list of (rect, color) tuples.
+    for rect, color in rects_to_draw:
+        pygame.draw.rect(screen, color, rect)
+    # now overlay the echoes so they appear above the maze
+    screen.blit(s, (0, 0))
+
+    # 2. draw the player.
+    # the player may have gone off the screen. bring it back in.
+    player.x = max(0, min(player.x, screenWidth - player.width))
+    player.y = max(0, min(player.y, screenHeight - player.height))
+    pygame.draw.rect(screen, (0, 30, 255), player)
+    if player_collision_flash_frames > 0:
+        pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
+        player_collision_flash_frames -= 1
 
     # check if the player has reached the exit.
-    if hasPlayerReachedExit(player, maze):
+    if hasPlayerReachedExit(player):
         print("You have reached the exit!")
-        # change the color of the player to green with a white outline.
-        pygame.draw.rect(screen, PLAYER_EXIT_COLOR, player, 2)
-        pygame.display.flip()
-        time.sleep(1)
-        pygame.draw.rect(screen, PLAYER_COLOR, player)
-        pygame.display.flip()
+        solvedtheMaze = True 
+        pygame.draw.rect(screen, PLAYER_EXIT_COLOR, player, 2) # draw an outline on the player.
         run = False
-
+    
+    # finally, refresh the screen.
     pygame.display.flip()
     clock.tick(GAME_FRAME_RATE)  # GAME_FRAME_RATE frames per second.
     # end of main loop.
@@ -565,9 +585,12 @@ while run:
 # measure the time taken from the start of the main loop to the end of the main loop.
 maze_solve_end_time = time.time()
 time_taken_to_solve_maze = round(maze_solve_end_time - maze_solve_start_time, 2)
-print("time taken to solve: ", time_taken_to_solve_maze, "seconds")
+if solvedtheMaze:
+    print("time taken to solve: ", time_taken_to_solve_maze, "seconds")
+else:
+    print("maze unsolved in:", time_taken_to_solve_maze, "seconds")
 
-# TODO: do an animation of the player reaching the exit.
+# TODO: do an animation of the the win. confetti ? snowfall ? fireworks ?
 
 
 # sleep for 1 second.
