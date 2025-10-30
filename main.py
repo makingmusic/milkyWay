@@ -20,11 +20,13 @@ MAZE_WALL_COLOR = (173, 216, 230)  # Light blue
 MAZE_PATH_COLOR = (0, 0, 0)  # Black
 MAZE_ENTRANCE_COLOR = (0, 0, 0)  # Black
 MAZE_EXIT_COLOR = (0, 255, 0)  # Green
+# MAZE_DEBUG_COLOR = (128, 128, 128)  # grey color for debugging purposes.
+MAZE_DEBUG_COLOR = (0, 0, 0)  # black
 
 ECHO_RADIUS_MAX = 25  # TODO: this is not being used. delete it later.
 ECHO_RADIUS_MIN = 0
 ECHO_RADIUS_START = 0
-ECHO_RADIUS_INCREMENT = 6  # how much the radius increases by each frame.
+ECHO_RADIUS_INCREMENT = 4  # how much the radius increases by each frame.
 ECHO_THICKNESS = 2  # width of the echo circle
 ECHO_COLOR = (255, 255, 255)  # White
 
@@ -203,11 +205,7 @@ def detectCollision(player, maze):
     for y in range(player_top, player_bottom + 1):
         for x in range(player_left, player_right + 1):
             if 0 <= y < len(maze) and 0 <= x < len(maze[0]):  # Check bounds
-                if DEBUG_MODE:
-                    print(f"Checking if player collided with wall at ({x}, {y})")
                 if maze[y][x] == 1:  # 1 represents a wall
-                    if DEBUG_MODE:
-                        print(f"Player collided with wall at ({x}, {y})")
                     return True
     return False
 
@@ -359,7 +357,8 @@ screen = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption(MAZE_TITLE)
 
 # color setup
-wallColor = MAZE_WALL_COLOR
+# wallColor = MAZE_WALL_COLOR
+wallColor = MAZE_DEBUG_COLOR  # for debug only.
 pathColor = MAZE_PATH_COLOR
 entranceColor = MAZE_ENTRANCE_COLOR
 exitColor = MAZE_EXIT_COLOR
@@ -369,6 +368,81 @@ exitColor = MAZE_EXIT_COLOR
 ########################################################
 run = True
 maze_solve_start_time = time.time()
+
+
+def drawMaze(screen, maze, wallColor, pathColor, entranceColor, exitColor):
+    """
+    Draw the maze on the screen.
+    Args:
+        screen: pygame.Surface - the screen to draw the maze on
+        maze: list of lists - the maze to draw
+        wallColor: tuple - the color of the walls
+        pathColor: tuple - the color of the paths
+        entranceColor: tuple - the color of the entrance
+        exitColor: tuple - the color of the exit
+    """
+    for y in range(mazeY):
+        for x in range(mazeX):
+            rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
+            if y == mazeY - 1 and x == mazeX - 1:
+                pygame.draw.rect(screen, exitColor, rect)
+            elif maze[y][x] == 1:
+                pygame.draw.rect(screen, wallColor, rect)
+            else:
+                pygame.draw.rect(screen, pathColor, rect)
+    return
+
+
+def drawSubsetMaze(screen, maze_subset, wallColor, pathColor, entranceColor, exitColor):
+    """
+    Draw the subset of the maze on the screen.
+    Remember that all the maze data here might not be a full 2D list.
+    """
+    for y in range(mazeY):
+        for x in range(mazeX):
+            rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
+            if maze_subset[y][x] == 1:
+                pygame.draw.rect(screen, wallColor, rect)
+            else:
+                pygame.draw.rect(screen, pathColor, rect)
+    return
+
+
+def getMazeSubset(maze, center_of_circle, radius_of_circle):
+    """
+    Get the subset of the maze that is within the echo circle.
+
+    Args:
+        maze: 2D list representing the maze (0 = path, 1 = wall)
+        center_of_circle: tuple (x, y) in pixel coordinates
+        radius_of_circle: int radius in pixels
+
+    Returns:
+        maze_subset: 2D list where cells within the circle contain the original maze data,
+                    and cells outside the circle are set to 0 (path)
+    """
+    cell_count = 0
+    # initialize maze_subset as a 2D list where all the values are 0.
+    maze_subset = [[0 for _ in range(mazeX)] for _ in range(mazeY)]
+
+    for y in range(mazeY):
+        for x in range(mazeX):
+            # Convert maze coordinates to pixel coordinates (center of each cell)
+            cell_center_x = x * CELL_SIZE + CELL_SIZE // 2
+            cell_center_y = y * CELL_SIZE + CELL_SIZE // 2
+
+            # Check if the cell center is within the circle
+            if (cell_center_x - center_of_circle[0]) ** 2 + (
+                cell_center_y - center_of_circle[1]
+            ) ** 2 <= radius_of_circle**2:
+                cell_count += 1
+                # Preserve the original maze data instead of just setting to 1
+                maze_subset[y][x] = maze[y][x]
+
+    if DEBUG_MODE:
+        print(f"sub maze cells: {cell_count} out of {mazeX * mazeY} cells")
+    return maze_subset
+
 
 while run:
     for event in pygame.event.get():
@@ -384,15 +458,9 @@ while run:
     screen.fill((0, 0, 0))  # clear the screen
 
     # draw the maze.
-    for y in range(mazeY):
-        for x in range(mazeX):
-            rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
-            if y == mazeY - 1 and x == mazeX - 1:
-                pygame.draw.rect(screen, exitColor, rect)
-            elif maze[y][x] == 1:
-                pygame.draw.rect(screen, wallColor, rect)
-            else:
-                pygame.draw.rect(screen, pathColor, rect)
+    drawMaze(screen, maze, MAZE_DEBUG_COLOR, pathColor, entranceColor, exitColor)
+    # refresh the screen.
+    # pygame.display.flip()
 
     # find out if any key is pressed by the player.
     key = pygame.key.get_pressed()  # returns immediately.
@@ -445,7 +513,6 @@ while run:
         # make the player blink for a short duration.
         pygame.draw.rect(screen, PLAYER_BLINK_COLOR, player, 2)
         pygame.display.flip()
-        time.sleep(0.1)
         pygame.draw.rect(screen, PLAYER_COLOR, player)
         pygame.display.flip()
         (x_delta, y_delta) = resolveCollision(player, maze)
@@ -471,6 +538,12 @@ while run:
         radius_of_circle = int(r)
         pygame.draw.circle(
             s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS
+        )
+        # find the subset of the maze that is within the echo circle.
+        maze_subset = getMazeSubset(maze, center_of_circle, radius_of_circle)
+        # draw the maze subset on the screen.
+        drawMaze(
+            screen, maze_subset, MAZE_WALL_COLOR, pathColor, entranceColor, exitColor
         )
         screen.blit(s, (0, 0))
 
