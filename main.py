@@ -23,7 +23,7 @@ if DEBUG_MODE:
 MAZE_SHOWN_WALL_COLOR = (173, 216, 230)  # Light blue 
 MAZE_PATH_COLOR = (0, 0, 0)  # Black
 MAZE_ENTRANCE_COLOR = (0, 0, 0)  # Black
-MAZE_EXIT_COLOR = (0, 255, 0)  # Green
+MAZE_EXIT_COLOR = (255, 0, 0)  # Red
 
 MAZE_CODE_PATH = 0 
 MAZE_CODE_HIDDEN_WALL = 1
@@ -540,10 +540,9 @@ while run:
     maze_subset = getMazeWithinEchoCircle(maze, player.center, largest_echo_radius)  
     if DEBUG_MODE:
         if largest_echo_radius > 0:
-            print(f"largest echo radius: {largest_echo_radius}")
             # count number of cells in maze subset that are not zero.
             maze_subset_cells = sum(1 for row in maze_subset for cell in row if cell != 0) if maze_subset else 0    
-            print(f"non zero maze subset cells: {maze_subset_cells}")
+            print(f"echo radius: {largest_echo_radius}, non zero maze subset cells: {maze_subset_cells}")
 
     # calculate the echo circles 
     circles_to_draw = []
