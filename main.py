@@ -13,19 +13,21 @@ GAME_FRAME_RATE = 60
 
 MAZE_TITLE = "One Maze to Rule Them All"
 MAZE_COMPLEXITY = 0.01  # 0.0 -> very simple (straighter, longer corridors), 1.0 -> very complex (more turns/branching feel)
- 
+
 CELL_SIZE = 20
 MAZE_W, MAZE_H = 50, 21
-MAX_NUM_TIMES_TO_REGENERATE_MAZE = 10 # if the maze is not reachable, regenerate it up to 10 times.
-MAZE_HIDDEN_WALL_COLOR = (0,0,0) # black 
+MAX_NUM_TIMES_TO_REGENERATE_MAZE = (
+    10  # if the maze is not reachable, regenerate it up to 10 times.
+)
+MAZE_HIDDEN_WALL_COLOR = (0, 0, 0)  # black
 if DEBUG_MODE:
     MAZE_HIDDEN_WALL_COLOR = (128, 128, 128)  # grey color for debugging purposes.
-MAZE_SHOWN_WALL_COLOR = (173, 216, 230)  # Light blue 
+MAZE_SHOWN_WALL_COLOR = (173, 216, 230)  # Light blue
 MAZE_PATH_COLOR = (0, 0, 0)  # Black
 MAZE_ENTRANCE_COLOR = (0, 0, 0)  # Black
 MAZE_EXIT_COLOR = (255, 0, 0)  # Red
 
-MAZE_CODE_PATH = 0 
+MAZE_CODE_PATH = 0
 MAZE_CODE_HIDDEN_WALL = 1
 MAZE_CODE_SHOWN_WALL = 2
 
@@ -47,10 +49,10 @@ PLAYER_START_X = 5
 PLAYER_START_Y = 5
 PLAYER_COLOR = (255, 0, 0)  # Red
 PLAYER_BLINK_COLOR = (255, 255, 255)  # White
-PLAYER_COLLISSION_FLASH_FRAMES = 4 # how many frames to show the collision flash. 
+PLAYER_COLLISSION_FLASH_FRAMES = 4  # how many frames to show the collision flash.
 PLAYER_EXIT_COLOR = (0, 255, 0)  # Green
-PLAYER_XAXIS_MOVEMENT_SPEED = 2
-PLAYER_YAXIS_MOVEMENT_SPEED = 2
+PLAYER_XAXIS_MOVEMENT_SPEED = 4
+PLAYER_YAXIS_MOVEMENT_SPEED = 4
 PLAYER_SHIFT_KEY_MULTIPLIER = 2
 PLAYER_DIAGONAL_MOVEMENT_FACTOR = 0.7071  # factor for diagonal movement.
 
@@ -70,7 +72,8 @@ PLAYER_SHIFT_KEY = pygame.K_LSHIFT
 # Maze Util Functions
 ########################################################
 
-maze_generation_attempts = 0 # count the number of times the maze has been generated. 
+maze_generation_attempts = 0  # count the number of times the maze has been generated.
+
 
 def genMaze(width, height, complexity=MAZE_COMPLEXITY):
     """
@@ -87,7 +90,7 @@ def genMaze(width, height, complexity=MAZE_COMPLEXITY):
     Returns:
         list: 2D list of integers where 0 = path, 1 = wall
     """
-    global maze_generation_attempts # increment the number of times the maze has been generated. 
+    global maze_generation_attempts  # increment the number of times the maze has been generated.
     maze_generation_attempts += 1
     if maze_generation_attempts > MAX_NUM_TIMES_TO_REGENERATE_MAZE:
         print("error: failed to generate maze after 10 attempts. giving up.")
@@ -344,11 +347,15 @@ def hasPlayerReachedExit(player):
 
     if (player_center_x == (MAZE_W - 1)) and (player_center_y == (MAZE_H - 1)):
         # check if player's center is fully inside the exit rectangle.
-        if ((player.centerx >= EXIT_RECT.left) and (player.centerx <= EXIT_RECT.right)) and ((player.centery >= EXIT_RECT.top) and (player.centery <= EXIT_RECT.bottom)):
+        if (
+            (player.centerx >= EXIT_RECT.left) and (player.centerx <= EXIT_RECT.right)
+        ) and (
+            (player.centery >= EXIT_RECT.top) and (player.centery <= EXIT_RECT.bottom)
+        ):
             return True
         else:
-            return False   
-    
+            return False
+
     return False
 
 
@@ -359,14 +366,18 @@ player = pygame.Rect(PLAYER_START_X, PLAYER_START_Y, PLAYER_SIZE, PLAYER_SIZE)
 echoes = []
 pygame.init()
 clock = pygame.time.Clock()
-player_collision_flash_frames = 0  # frames remaining to show a wall-hit flash outline 
+player_collision_flash_frames = 0  # frames remaining to show a wall-hit flash outline
 
 cellSize = CELL_SIZE
 mazeX, mazeY = MAZE_W, MAZE_H
 start_time = time.time()
 maze = genMaze(mazeX, mazeY)
-if (maze is None):
-    print("error: failed to generate maze after ", MAX_NUM_TIMES_TO_REGENERATE_MAZE, " attempts. giving up.")
+if maze is None:
+    print(
+        "error: failed to generate maze after ",
+        MAX_NUM_TIMES_TO_REGENERATE_MAZE,
+        " attempts. giving up.",
+    )
     sys.exit(1)
 end_time = time.time()
 time_taken_to_generate_maze = round((end_time - start_time) * 1000000, 2)
@@ -384,10 +395,11 @@ exitColor = MAZE_EXIT_COLOR
 
 EXIT_RECT = pygame.Rect(
     (mazeX - 1) * CELL_SIZE, (mazeY - 1) * CELL_SIZE, CELL_SIZE, CELL_SIZE
-) # useful for collision detection. 
+)  # useful for collision detection.
 
-s = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA) # one-time surface for the echo circles. 
-
+s = pygame.Surface(
+    (screenWidth, screenHeight), pygame.SRCALPHA
+)  # one-time surface for the echo circles.
 
 
 def drawMaze(screen, maze, entranceColor, exitColor):
@@ -414,11 +426,12 @@ def drawMaze(screen, maze, entranceColor, exitColor):
                 elif cell_value == MAZE_CODE_SHOWN_WALL:
                     color = MAZE_SHOWN_WALL_COLOR
                 else:
-                    # this should never happen. 
+                    # this should never happen.
                     print(f"error:unexpected cell value: {cell_value} at ({x}, {y})")
                     color = MAZE_PATH_COLOR
             rects_with_colors.append((rect, color))
     return rects_with_colors
+
 
 def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
     """
@@ -431,8 +444,8 @@ def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
 
     Returns:
         maze_subset: 2D list where
-            - original paths (0) always remain MAZE_CODE_PATH 
-            - walls (1) within the circle become MAZE_CODE_SHOWN_WALL 
+            - original paths (0) always remain MAZE_CODE_PATH
+            - walls (1) within the circle become MAZE_CODE_SHOWN_WALL
             - cells outside the circle retain their original maze value (MAZE_CODE_PATH or MAZE_CODE_HIDDEN_WALL)
     """
     cell_count = 0
@@ -446,7 +459,7 @@ def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
             cell_center_y = y * CELL_SIZE + CELL_SIZE // 2
 
             # Check if the cell center is within the circle
-            # formula is (x - center_x) ** 2 + (y - center_y) ** 2 <= radius ** 2 
+            # formula is (x - center_x) ** 2 + (y - center_y) ** 2 <= radius ** 2
             if (cell_center_x - center_of_circle[0]) ** 2 + (
                 cell_center_y - center_of_circle[1]
             ) ** 2 <= radius_of_circle**2:
@@ -454,8 +467,9 @@ def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
                 # If this cell is a hidden wall in the original maze, mark it as shown wall.
                 # Paths (MAZE_CODE_PATH) remain MAZE_CODE_PATH by inheritance
                 if maze[y][x] == MAZE_CODE_HIDDEN_WALL:
-                    maze_subset[y][x] = MAZE_CODE_SHOWN_WALL # mark as shown wall.
+                    maze_subset[y][x] = MAZE_CODE_SHOWN_WALL  # mark as shown wall.
     return maze_subset
+
 
 ########################################################
 # Main Loop
@@ -465,13 +479,13 @@ run = True
 maze_solve_start_time = time.time()
 
 
-solvedtheMaze = False # flag to indicate if the maze has been solved. 
+solvedtheMaze = False  # flag to indicate if the maze has been solved.
 
 while run:
     # clear the screen
-    screen.fill((0, 0, 0))  
+    screen.fill((0, 0, 0))
 
-    for event in pygame.event.get(): # handle key presses and mouse clicks.
+    for event in pygame.event.get():  # handle key presses and mouse clicks.
         if event.type == pygame.QUIT:
             run = False
         if (event.type == pygame.MOUSEBUTTONDOWN) or (
@@ -523,7 +537,6 @@ while run:
     elif key[PLAYER_DOWN_KEY]:  # down
         player.move_ip(0, y_axis_movement_speed)
 
-
     if detectCollision(player, maze):  # player has collided with a wall.
         # schedule a brief non-blocking flash; rendering happens in the draw step
         player_collision_flash_frames = PLAYER_COLLISSION_FLASH_FRAMES
@@ -534,17 +547,25 @@ while run:
     # TODO: the echo alpha is not changing the transparency of the echo circle. Fix it.
 
     # find the largest echo radius.
-    largest_echo_radius = max(echo[2] for echo in echoes) if echoes else 0 # default to 0 if no echoes. 
+    largest_echo_radius = (
+        max(echo[2] for echo in echoes) if echoes else 0
+    )  # default to 0 if no echoes.
 
     # now for this largest echo radius, identify the maze subset.
-    maze_subset = getMazeWithinEchoCircle(maze, player.center, largest_echo_radius)  
+    maze_subset = getMazeWithinEchoCircle(maze, player.center, largest_echo_radius)
     if DEBUG_MODE:
         if largest_echo_radius > 0:
             # count number of cells in maze subset that are not zero.
-            maze_subset_cells = sum(1 for row in maze_subset for cell in row if cell != 0) if maze_subset else 0    
-            print(f"echo radius: {largest_echo_radius}, non zero maze subset cells: {maze_subset_cells}")
+            maze_subset_cells = (
+                sum(1 for row in maze_subset for cell in row if cell != 0)
+                if maze_subset
+                else 0
+            )
+            print(
+                f"echo radius: {largest_echo_radius}, non zero maze subset cells: {maze_subset_cells}"
+            )
 
-    # calculate the echo circles 
+    # calculate the echo circles
     circles_to_draw = []
     for echo in echoes[::-1]:
         ex, ey, r, a = echo
@@ -559,17 +580,23 @@ while run:
         color_with_alpha = (ECHO_COLOR[0], ECHO_COLOR[1], ECHO_COLOR[2], alpha_int)
         center_of_circle = (int(ex), int(ey))
         radius_of_circle = int(r)
-        circles_to_draw.append((center_of_circle, radius_of_circle, color_with_alpha)) # add to the list of circles to draw.
+        circles_to_draw.append(
+            (center_of_circle, radius_of_circle, color_with_alpha)
+        )  # add to the list of circles to draw.
 
     # draw everything here: maze, echoes, player.
-    
+
     # prepare echo surface; we'll blit it AFTER drawing the maze so echoes are visible
-    s.fill((0, 0, 0, 0)) # clear the surface.
+    s.fill((0, 0, 0, 0))  # clear the surface.
     for center_of_circle, radius_of_circle, color_with_alpha in circles_to_draw:
-        pygame.draw.circle(s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS)
+        pygame.draw.circle(
+            s, color_with_alpha, center_of_circle, radius_of_circle, ECHO_THICKNESS
+        )
 
     # 1. the updated maze (based on the echoes)
-    rects_to_draw = drawMaze(screen, maze_subset, entranceColor, exitColor) # returns a list of (rect, color) tuples.
+    rects_to_draw = drawMaze(
+        screen, maze_subset, entranceColor, exitColor
+    )  # returns a list of (rect, color) tuples.
     for rect, color in rects_to_draw:
         pygame.draw.rect(screen, color, rect)
     # now overlay the echoes so they appear above the maze
@@ -587,10 +614,12 @@ while run:
     # check if the player has reached the exit.
     if hasPlayerReachedExit(player):
         print("You have reached the exit!")
-        solvedtheMaze = True 
-        pygame.draw.rect(screen, PLAYER_EXIT_COLOR, player, 2) # draw an outline on the player.
+        solvedtheMaze = True
+        pygame.draw.rect(
+            screen, PLAYER_EXIT_COLOR, player, 2
+        )  # draw an outline on the player.
         run = False
-    
+
     # finally, refresh the screen.
     pygame.display.flip()
     clock.tick(GAME_FRAME_RATE)  # GAME_FRAME_RATE frames per second.
