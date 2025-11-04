@@ -8,14 +8,14 @@ from collections import deque
 # Config: All config lives here. Self explanatory names.
 ########################################################
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 GAME_FRAME_RATE = 60
 
 MAZE_TITLE = "One Maze to Rule Them All"
-MAZE_COMPLEXITY = 0.01  # 0.0 -> very simple (straighter, longer corridors), 1.0 -> very complex (more turns/branching feel)
+MAZE_COMPLEXITY = 0.4  # 0.0 -> very simple (straighter, longer corridors), 1.0 -> very complex (more turns/branching feel)
 
 CELL_SIZE = 20
-MAZE_W, MAZE_H = 50, 21
+MAZE_W, MAZE_H = 30, 21
 MAX_NUM_TIMES_TO_REGENERATE_MAZE = (
     10  # if the maze is not reachable, regenerate it up to 10 times.
 )
@@ -67,6 +67,12 @@ PLAYER_DOWN_KEY = pygame.K_DOWN
 
 PLAYER_ECHO_KEY = pygame.K_SPACE  # Press space to trigger an echo.
 PLAYER_SHIFT_KEY = pygame.K_LSHIFT
+
+# UI/HUD config
+HUD_PANEL_WIDTH = 180  # pixels reserved on the right for HUD so it never overlaps maze
+HUD_BG_COLOR = (18, 18, 28)  # dark grey
+HUD_TEXT_COLOR = (220, 220, 235)  # light grey
+HUD_PADDING = 12
 
 ########################################################
 # Maze Util Functions
@@ -384,7 +390,8 @@ time_taken_to_generate_maze = round((end_time - start_time) * 1000000, 2)
 print("successfully generated maze in ", time_taken_to_generate_maze, "microseconds")
 
 # Window setup
-screenWidth, screenHeight = mazeX * cellSize, mazeY * cellSize
+mazePixelWidth, mazePixelHeight = mazeX * cellSize, mazeY * cellSize
+screenWidth, screenHeight = mazePixelWidth + HUD_PANEL_WIDTH, mazePixelHeight
 screen = pygame.display.set_mode((screenWidth, screenHeight))
 pygame.display.set_caption(MAZE_TITLE)
 
@@ -397,9 +404,11 @@ EXIT_RECT = pygame.Rect(
     (mazeX - 1) * CELL_SIZE, (mazeY - 1) * CELL_SIZE, CELL_SIZE, CELL_SIZE
 )  # useful for collision detection.
 
-s = pygame.Surface(
-    (screenWidth, screenHeight), pygame.SRCALPHA
-)  # one-time surface for the echo circles.
+# one-time surface for the echo circles; restrict to maze area so echoes don't bleed into HUD
+s = pygame.Surface((mazePixelWidth, screenHeight), pygame.SRCALPHA)
+
+# HUD font
+hud_font = pygame.font.SysFont(None, 22)
 
 
 def drawMaze(screen, maze, entranceColor, exitColor):
@@ -604,7 +613,7 @@ while run:
 
     # 2. draw the player.
     # the player may have gone off the screen. bring it back in.
-    player.x = max(0, min(player.x, screenWidth - player.width))
+    player.x = max(0, min(player.x, mazePixelWidth - player.width))
     player.y = max(0, min(player.y, screenHeight - player.height))
     pygame.draw.rect(screen, (0, 30, 255), player)
     if player_collision_flash_frames > 0:
@@ -619,6 +628,27 @@ while run:
             screen, PLAYER_EXIT_COLOR, player, 2
         )  # draw an outline on the player.
         run = False
+
+    # 3. draw the HUD on the right, top-right aligned text within the HUD area
+    pygame.draw.rect(
+        screen, HUD_BG_COLOR, (mazePixelWidth, 0, HUD_PANEL_WIDTH, screenHeight)
+    )
+    # prepare HUD info
+    elapsed_s = max(0.0, time.time() - maze_solve_start_time)
+    echoes_count = len(echoes)
+    fps_val = int(clock.get_fps())
+
+    hud_lines = [
+        f"Time: {elapsed_s:.1f}s",
+        f"# of Echoes Used: {echoes_count}",
+        f"FPS: {fps_val}",
+    ]
+
+    y_cursor = HUD_PADDING
+    for line in hud_lines:
+        surf = hud_font.render(line, True, HUD_TEXT_COLOR)
+        screen.blit(surf, (mazePixelWidth + HUD_PADDING, y_cursor))
+        y_cursor += surf.get_height() + 6
 
     # finally, refresh the screen.
     pygame.display.flip()
