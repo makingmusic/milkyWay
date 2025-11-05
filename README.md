@@ -6,6 +6,9 @@ Spacebar or left-mouse click for echo
 
 The walls are not shown by default, when you press the spacebar, it does echo location and shows the nearby walls for a brief period.
 
+<img width="766" height="420" alt="image" src="https://github.com/user-attachments/assets/a39985c0-1c5e-4a83-92ed-36fff64dc535" />
+
+
 TODO: 
 * hiding the walls and using echolocation to find the walls is tbd. 
 
@@ -49,3 +52,5 @@ If acceptable, cap GAME_FRAME_RATE at 45 or 30 in release.
 Lower ECHO_THICKNESS, reduce alpha precision steps, and avoid anti-aliased circle drawing if using gfxdraw (filled circle + outline can be cheaper).
 15) Avoid list mutation while iterating echoes
 Use index-based loop or build a new list for alive echoes. It avoids potential O(n^2) behaviors and keeps things predictable under higher echo counts.
+
+
