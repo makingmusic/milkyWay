@@ -69,6 +69,8 @@ PLAYER_DOWN_KEY = pygame.K_DOWN
 PLAYER_ECHO_KEY = pygame.K_SPACE  # Press space to trigger an echo.
 PLAYER_SHIFT_KEY = pygame.K_LSHIFT
 
+PLAYER_SHOW_ALL_WALLS_KEY = pygame.K_RETURN  # Press return to show all walls.
+
 # UI/HUD config
 HUD_PANEL_WIDTH = 180  # pixels reserved on the right for HUD so it never overlaps maze
 HUD_BG_COLOR = (18, 18, 28)  # dark grey
@@ -517,6 +519,11 @@ while run:
                     "Maximum number of echoes allowed reached. No more echoes can be used."
                 )
 
+        if event.type == pygame.KEYDOWN and event.key == PLAYER_SHOW_ALL_WALLS_KEY:
+            show_all_walls = True
+            MAZE_HIDDEN_WALL_COLOR = (128, 128, 128)
+            print("Showing all walls.")
+
     # find out if any key is pressed by the player.
     key = pygame.key.get_pressed()  # returns immediately.
 
@@ -670,15 +677,21 @@ while run:
 # measure the time taken from the start of the main loop to the end of the main loop.
 maze_solve_end_time = time.time()
 time_taken_to_solve_maze = round(maze_solve_end_time - maze_solve_start_time, 2)
+
+
+# TODO: do an animation of the the win. confetti ? snowfall ? fireworks ?
+# Also, render the entire maze with all walls shown.
+
+print("########################################################")
+print("Game over.")
+print("######")
+print("Total echoes used: ", echoes_count)
+print("Total time taken:  ", time_taken_to_solve_maze, "seconds")
 if solvedtheMaze:
     print("time taken to solve: ", time_taken_to_solve_maze, "seconds")
 else:
     print("maze unsolved in:", time_taken_to_solve_maze, "seconds")
+print("########################################################")
 
-# TODO: do an animation of the the win. confetti ? snowfall ? fireworks ?
-
-
-# sleep for 1 second.
-time.sleep(1)
 pygame.quit()
 sys.exit()
