@@ -37,6 +37,7 @@ ECHO_RADIUS_START = 0
 ECHO_RADIUS_INCREMENT = 4  # how much the radius increases by each frame.
 ECHO_THICKNESS = 2  # width of the echo circle
 ECHO_COLOR = (255, 255, 255)  # White
+MAX_ECHOES_ALLOWED = 20  # maximum number of echoes allowed.
 
 # TODO: ALpha is not showing the transparent effect. While it is useful to decay the echo circle. Fix it.
 ECHO_ALPHA_MAX = 255
@@ -373,6 +374,7 @@ echoes = []
 pygame.init()
 clock = pygame.time.Clock()
 player_collision_flash_frames = 0  # frames remaining to show a wall-hit flash outline
+echoes_count = 0  # number of echoes used so far.
 
 cellSize = CELL_SIZE
 mazeX, mazeY = MAZE_W, MAZE_H
@@ -500,9 +502,20 @@ while run:
         if (event.type == pygame.MOUSEBUTTONDOWN) or (
             event.type == pygame.KEYDOWN and event.key == PLAYER_ECHO_KEY
         ):
-            echoes.append(
-                [player.centerx, player.centery, ECHO_RADIUS_START, ECHO_ALPHA_START]
-            )  # schedule the echo to be drawn.
+            echoes_count += 1
+            if echoes_count <= MAX_ECHOES_ALLOWED:
+                echoes.append(
+                    [
+                        player.centerx,
+                        player.centery,
+                        ECHO_RADIUS_START,
+                        ECHO_ALPHA_START,
+                    ]
+                )  # schedule the echo to be drawn.
+            else:
+                print(
+                    "Maximum number of echoes allowed reached. No more echoes can be used."
+                )
 
     # find out if any key is pressed by the player.
     key = pygame.key.get_pressed()  # returns immediately.
@@ -635,7 +648,6 @@ while run:
     )
     # prepare HUD info
     elapsed_s = max(0.0, time.time() - maze_solve_start_time)
-    echoes_count = len(echoes)
     fps_val = int(clock.get_fps())
 
     hud_lines = [
