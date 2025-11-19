@@ -414,6 +414,15 @@ s = pygame.Surface((mazePixelWidth, screenHeight), pygame.SRCALPHA)
 # HUD font
 hud_font = pygame.font.SysFont(None, 22)
 
+# Pre-calculate grid rects to avoid creating them every frame
+GRID_RECTS = [
+    [
+        pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+        for x in range(MAZE_W)
+    ]
+    for y in range(MAZE_H)
+]
+
 
 def drawMaze(screen, maze, entranceColor, exitColor):
     """
@@ -427,22 +436,24 @@ def drawMaze(screen, maze, entranceColor, exitColor):
     rects_with_colors = []
     for y in range(mazeY):
         for x in range(mazeX):
-            rect = pygame.Rect(x * cellSize, y * cellSize, cellSize, cellSize)
             if y == mazeY - 1 and x == mazeX - 1:
-                color = exitColor
-            else:
-                cell_value = maze[y][x]
-                if cell_value == MAZE_CODE_PATH:
-                    color = MAZE_PATH_COLOR
-                elif cell_value == MAZE_CODE_HIDDEN_WALL:
-                    color = MAZE_HIDDEN_WALL_COLOR
-                elif cell_value == MAZE_CODE_SHOWN_WALL:
-                    color = MAZE_SHOWN_WALL_COLOR
-                else:
-                    # this should never happen.
-                    print(f"error:unexpected cell value: {cell_value} at ({x}, {y})")
-                    color = MAZE_PATH_COLOR
-            rects_with_colors.append((rect, color))
+                rects_with_colors.append((GRID_RECTS[y][x], exitColor))
+                continue
+
+            cell_value = maze[y][x]
+            # Optimization: Only draw if the color is NOT black (or background color).
+            # MAZE_PATH_COLOR and MAZE_HIDDEN_WALL_COLOR are typically black.
+            if cell_value == MAZE_CODE_SHOWN_WALL:
+                rects_with_colors.append((GRID_RECTS[y][x], MAZE_SHOWN_WALL_COLOR))
+            elif cell_value == MAZE_CODE_PATH and MAZE_PATH_COLOR != (0, 0, 0):
+                rects_with_colors.append((GRID_RECTS[y][x], MAZE_PATH_COLOR))
+            elif cell_value == MAZE_CODE_HIDDEN_WALL and MAZE_HIDDEN_WALL_COLOR != (
+                0,
+                0,
+                0,
+            ):
+                rects_with_colors.append((GRID_RECTS[y][x], MAZE_HIDDEN_WALL_COLOR))
+
     return rects_with_colors
 
 
@@ -461,24 +472,28 @@ def getMazeWithinEchoCircle(maze, center_of_circle, radius_of_circle):
             - walls (1) within the circle become MAZE_CODE_SHOWN_WALL
             - cells outside the circle retain their original maze value (MAZE_CODE_PATH or MAZE_CODE_HIDDEN_WALL)
     """
-    cell_count = 0
-    # Start by inheriting all original maze values (retain outside-circle values for both walls and paths)
+    # Optimization: Instead of deep copying, we can copy rows as needed or just modify the necessary parts
+    # if we weren't recreating it every frame. Since we are, let's at least optimize the iteration.
     maze_subset = [row[:] for row in maze]
 
-    for y in range(mazeY):
-        for x in range(mazeX):
+    # Optimization: Determine bounding box of the circle in grid coordinates
+    cx, cy = center_of_circle
+    r_sq = radius_of_circle**2
+
+    min_x = max(0, (cx - radius_of_circle) // CELL_SIZE)
+    max_x = min(mazeX, (cx + radius_of_circle) // CELL_SIZE + 1)
+    min_y = max(0, (cy - radius_of_circle) // CELL_SIZE)
+    max_y = min(mazeY, (cy + radius_of_circle) // CELL_SIZE + 1)
+
+    for y in range(min_y, max_y):
+        for x in range(min_x, max_x):
             # Convert maze coordinates to pixel coordinates (center of each cell)
             cell_center_x = x * CELL_SIZE + CELL_SIZE // 2
             cell_center_y = y * CELL_SIZE + CELL_SIZE // 2
 
             # Check if the cell center is within the circle
-            # formula is (x - center_x) ** 2 + (y - center_y) ** 2 <= radius ** 2
-            if (cell_center_x - center_of_circle[0]) ** 2 + (
-                cell_center_y - center_of_circle[1]
-            ) ** 2 <= radius_of_circle**2:
-                cell_count += 1
+            if (cell_center_x - cx) ** 2 + (cell_center_y - cy) ** 2 <= r_sq:
                 # If this cell is a hidden wall in the original maze, mark it as shown wall.
-                # Paths (MAZE_CODE_PATH) remain MAZE_CODE_PATH by inheritance
                 if maze[y][x] == MAZE_CODE_HIDDEN_WALL:
                     maze_subset[y][x] = MAZE_CODE_SHOWN_WALL  # mark as shown wall.
     return maze_subset
